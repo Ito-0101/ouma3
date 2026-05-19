@@ -167,67 +167,83 @@
 
 <footer>お馬3 POG 2026–2027</footer>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Supabaseの接続設定 (URL埋め込み済み)
+  const SUPABASE_URL = "https://rtwpgcxspqkhuyfvnhce.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_2MAOzwPhEieV5KGPotHNNw_o0UYYDnl";
 
-  // 提供されたFirebase設定情報
-  const firebaseConfig = {
-    apiKey: "AIzaSyAmAC06B8bibC9VJwLLn2UUohVprhMCla0",
-    authDomain: "ouma3-d6b11.firebaseapp.com",
-    projectId: "ouma3-d6b11",
-    storageBucket: "ouma3-d6b11.firebasestorage.app",
-    messagingSenderId: "318766709228",
-    appId: "1:318766709228:web:ea738624b9b145db59a8c9",
-    measurementId: "G-1Q9CC811RV"
-  };
-
-  // Firebaseの初期化
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  // Supabaseクライアントの初期化
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const PASS = 'ashiito';
   const MEMBERS = ['A','B','C'];
 
-  // 初期データ構造（データベースが空の時に使用）
   function defData(){return{names:{A:'Aさん',B:'Bさん',C:'Cさん'},horses:{A:[],B:[],C:[]},preds:{A:[],B:[],C:[]},columns:{A:[],B:[],C:[]}};}
   let D = defData();
 
-  // ユーティリティ
   function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
   function totalPts(m){return D.horses[m]?D.horses[m].reduce((s,h)=>s+(parseInt(h.pts)||0),0):0;}
   function getRank(m){return MEMBERS.slice().sort((a,b)=>totalPts(b)-totalPts(a)).indexOf(m);}
   function resultLabel(r){return r==='hit'?'的中 ✓':r==='miss'?'外れ ✗':'結果待ち';}
 
-  // Firebaseからリアルタイムにデータを同期する仕組み (onSnapshot)
-  onSnapshot(doc(db, "pog", "data2026"), (docSnap) => {
-    if (docSnap.exists()) {
-      D = docSnap.data();
-      // データの欠損を防ぐ安全対策
-      if(!D.names) D.names = defData().names;
-      if(!D.horses) D.horses = defData().horses;
-      if(!D.preds) D.preds = defData().preds;
-      if(!D.columns) D.columns = defData().columns;
+  // 初回データ読み込みとリアルタイム同期の設定
+  async function initSupabase() {
+    // 1. 最初のデータ読み込み
+    const { data, error } = await supabase
+      .from('pog_data')
+      .select('data')
+      .eq('id', 'data2026')
+      .single();
+
+    if (data && data.data) {
+      updateLocalData(data.data);
     } else {
-      // データベースにまだデータがない場合、初期データを書き込む
-      D = defData();
-      saveToFirebase();
+      // 万が一データがなかったら初期化
+      await saveToSupabase();
     }
-    // データが更新されたら画面を再描画する
+
+    // 2. リアルタイム変更を監視
+    supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'pog_data', filter: 'id=eq.data2026' },
+        (payload) => {
+          if (payload.new && payload.new.data) {
+            updateLocalData(payload.new.data);
+          }
+        }
+      )
+      .subscribe();
+  }
+
+  function updateLocalData(newData) {
+    D = newData;
+    if(!D.names) D.names = defData().names;
+    if(!D.horses) D.horses = defData().horses;
+    if(!D.preds) D.preds = defData().preds;
+    if(!D.columns) D.columns = defData().columns;
+    
     renderTop();
     if(document.getElementById('page-members').classList.contains('active')) renderMembers();
     if(document.getElementById('admin-main-wrap').style.display === 'block') renderAdmin();
-  });
+  }
 
-  // Firebaseにデータを保存する関数
-  async function saveToFirebase() {
-    try {
-      await setDoc(doc(db, "pog", "data2026"), D);
-    } catch (e) {
-      console.error("データ保存エラー: ", e);
-      alert("データの保存に失敗しました。Firestoreのルール（テストモード）を確認してください。");
+  // データを保存する関数
+  async function saveToSupabase() {
+    const { error } = await supabase
+      .from('pog_data')
+      .upsert({ id: 'data2026', data: D });
+    
+    if (error) {
+      console.error("Supabase保存エラー:", error);
+      alert("データの保存に失敗しました。SQL Editorでの設定を確認してください。");
     }
   }
+
+  // 初期化実行
+  initSupabase();
 
   // ページ切替
   window.showPage = function(p){
@@ -387,11 +403,9 @@
   }
 
   function renderAdmin(){
-    // names
     document.getElementById('name-A').value=D.names.A;
     document.getElementById('name-B').value=D.names.B;
     document.getElementById('name-C').value=D.names.C;
-    // sub tabs
     mkSubTabs('h-add-tabs','hAdd');mkSubTabs('h-list-tabs','hList');
     mkSubTabs('p-add-tabs','pAdd');mkSubTabs('p-list-tabs','pList');
     mkSubTabs('c-add-tabs','cAdd');mkSubTabs('c-list-tabs','cList');
@@ -418,7 +432,7 @@
     D.names.A=document.getElementById('name-A').value.trim()||'Aさん';
     D.names.B=document.getElementById('name-B').value.trim()||'Bさん';
     D.names.C=document.getElementById('name-C').value.trim()||'Cさん';
-    await saveToFirebase();
+    await saveToSupabase();
     alert('ニックネームを保存し、全員に共有しました！');
     renderAdmin();
   }
@@ -430,7 +444,7 @@
     if(!name){alert('馬名を入力してください');return;}
     if(!D.horses[m]) D.horses[m] = [];
     D.horses[m].push({id:Date.now(),name,sex:document.getElementById('h-sex').value,pts:parseInt(document.getElementById('h-pts').value)||0,trainer:document.getElementById('h-trainer').value.trim(),sire:document.getElementById('h-sire').value.trim()});
-    await saveToFirebase();
+    await saveToSupabase();
     ['h-name','h-trainer','h-sire'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('h-pts').value='0';
     aM.hList=m;mkSubTabs('h-list-tabs','hList');renderHorseList();
@@ -439,13 +453,13 @@
 
   window.updateHorsePts = async function(m,id,val){
     const h=D.horses[m].find(x=>x.id===id);if(h)h.pts=parseInt(val)||0;
-    await saveToFirebase();
+    await saveToSupabase();
   }
 
   window.delHorse = async function(m,id){
     if(!confirm('削除しますか？'))return;
     D.horses[m]=D.horses[m].filter(h=>h.id!==id);
-    await saveToFirebase();
+    await saveToSupabase();
     renderHorseList();
   }
 
@@ -469,7 +483,7 @@
     if(!race){alert('レース名を入力してください');return;}
     if(!D.preds[m]) D.preds[m] = [];
     D.preds[m].push({id:Date.now(),race,detail:document.getElementById('p-detail').value.trim(),result:document.getElementById('p-result').value});
-    await saveToFirebase();
+    await saveToSupabase();
     ['p-race','p-detail'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('p-result').value='pending';
     aM.pList=m;mkSubTabs('p-list-tabs','pList');renderPredList();
@@ -478,13 +492,13 @@
 
   window.updatePredResult = async function(m,id,val){
     const p=D.preds[m].find(x=>x.id===id);if(p)p.result=val;
-    await saveToFirebase();
+    await saveToSupabase();
   }
 
   window.delPred = async function(m,id){
     if(!confirm('削除しますか？'))return;
     D.preds[m]=D.preds[m].filter(p=>p.id!==id);
-    await saveToFirebase();
+    await saveToSupabase();
     renderPredList();
   }
 
@@ -509,7 +523,7 @@
     if(!title){alert('タイトルを入力してください');return;}
     if(!D.columns[m]) D.columns[m] = [];
     D.columns[m].push({id:Date.now(),title,date:document.getElementById('c-date').value,body:document.getElementById('c-body').value.trim()});
-    await saveToFirebase();
+    await saveToSupabase();
     ['c-title','c-body'].forEach(id=>document.getElementById(id).value='');
     aM.cList=m;mkSubTabs('c-list-tabs','cList');renderColList();
     alert(D.names[m]+'のコラムを追加し、共有しました');
@@ -518,7 +532,7 @@
   window.delColumn = async function(m,id){
     if(!confirm('削除しますか？'))return;
     D.columns[m]=D.columns[m].filter(c=>c.id!==id);
-    await saveToFirebase();
+    await saveToSupabase();
     renderColList();
   }
 
