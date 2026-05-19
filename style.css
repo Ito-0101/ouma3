@@ -1,0 +1,10 @@
+body {
+    background-color: #f0f8ff; /* 背景を薄い青色にする */
+    text-align: center;        /* 文字を真ん中寄せにする */
+    font-family: sans-serif;   /* フォントをスッキリしたゴシック体にする */
+}
+
+h1 {
+    color: #ff6b6b;            /* 見出しの色をトマトのような赤色にする */
+    margin-top: 50px;
+}
