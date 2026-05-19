@@ -1,13 +1,482 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お馬3 POG 2026-2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>お馬3 </h1>
-    <p>0円</p>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="site-title" onclick="showPage('top')">お馬3 <span>POG 2026–2027</span></div>
+    <nav>
+      <button onclick="showPage('top')" id="nav-top" class="active">トップ</button>
+      <button onclick="showPage('members')" id="nav-members">メンバー</button>
+      <button onclick="showPage('admin')" id="nav-admin">管理</button>
+    </nav>
+  </div>
+</header>
+
+<div class="page active" id="page-top">
+  <div class="hero">
+    <div class="hero-title">🏇 お馬3 POG 2026–2027</div>
+    <div class="hero-sub">PICK SIX COMPETITION · SEASON STANDINGS</div>
+  </div>
+  <div class="container">
+    <div class="section-title">現在のランキング</div>
+    <div class="ranking-list" id="ranking-list"></div>
+    <div class="top-grid">
+      <div>
+        <div class="section-title" style="margin-top:1.5rem;">最新の予想</div>
+        <div class="mini-card" id="top-preds"></div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-top:1.5rem;">最新コラム</div>
+        <div class="mini-card" id="top-columns"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-members">
+  <div class="member-tabs" id="member-tabs"></div>
+  <div class="member-content" id="member-content"></div>
+</div>
+
+<div class="page" id="page-admin">
+  <div id="admin-login-wrap">
+    <div class="admin-login">
+      <h2>🔐 管理画面</h2>
+      <input type="password" id="pw-input" placeholder="パスワードを入力"
+        onkeydown="if(event.key==='Enter')adminLogin()">
+      <br>
+      <button class="btn btn-primary" onclick="adminLogin()">ログイン</button>
+      <div class="err-msg" id="pw-err"></div>
+    </div>
+  </div>
+  <div id="admin-main-wrap" style="display:none;">
+    <div class="admin-wrap">
+      <div class="admin-header">
+        <h2>⚙️ 管理画面</h2>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:none;" onclick="adminLogout()">ログアウト</button>
+      </div>
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" onclick="switchAdminTab('names',this)">ニックネーム</button>
+        <button class="admin-tab-btn" onclick="switchAdminTab('horses',this)">指名馬</button>
+        <button class="admin-tab-btn" onclick="switchAdminTab('preds',this)">予想</button>
+        <button class="admin-tab-btn" onclick="switchAdminTab('columns',this)">コラム</button>
+      </div>
+
+      <div id="atab-names">
+        <div class="admin-section">
+          <h3>ニックネーム設定</h3>
+          <div class="form-row triple">
+            <div class="form-group"><label>Aさんのニックネーム</label><input type="text" id="name-A" placeholder="例：たろう"></div>
+            <div class="form-group"><label>Bさんのニックネーム</label><input type="text" id="name-B" placeholder="例：じろう"></div>
+            <div class="form-group"><label>Cさんのニックネーム</label><input type="text" id="name-C" placeholder="例：さぶろう"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="saveNames()">保存する</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="atab-horses" style="display:none;">
+        <div class="admin-section">
+          <h3>指名馬を追加</h3>
+          <div class="msub-tabs" id="h-add-tabs"></div>
+          <div class="form-row triple">
+            <div class="form-group"><label>馬名</label><input type="text" id="h-name" placeholder="ダイヤモンドライン"></div>
+            <div class="form-group"><label>性別</label><select id="h-sex"><option>牡</option><option>牝</option><option>セ</option></select></div>
+            <div class="form-group"><label>獲得ポイント</label><input type="number" id="h-pts" placeholder="0" value="0" min="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>調教師</label><input type="text" id="h-trainer" placeholder="田中誠一"></div>
+            <div class="form-group"><label>父</label><input type="text" id="h-sire" placeholder="エピファネイア"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="addHorse()">追加する</button>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>登録済み指名馬 — ポイント更新・削除</h3>
+          <div class="msub-tabs" id="h-list-tabs"></div>
+          <div id="horse-list"></div>
+        </div>
+      </div>
+
+      <div id="atab-preds" style="display:none;">
+        <div class="admin-section">
+          <h3>予想を追加</h3>
+          <div class="msub-tabs" id="p-add-tabs"></div>
+          <div class="form-row">
+            <div class="form-group"><label>レース名</label><input type="text" id="p-race" placeholder="日本ダービー"></div>
+            <div class="form-group"><label>結果</label>
+              <select id="p-result">
+                <option value="pending">結果待ち</option>
+                <option value="hit">的中 ✓</option>
+                <option value="miss">外れ ✗</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label>予想内容・コメント</label>
+            <textarea id="p-detail" placeholder="◎ダイヤモンドライン ○スカイウォーカー&#10;理由：調教の動きが抜群。"></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="addPred()">追加する</button>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>登録済み予想 — 結果更新・削除</h3>
+          <div class="msub-tabs" id="p-list-tabs"></div>
+          <div id="pred-list"></div>
+        </div>
+      </div>
+
+      <div id="atab-columns" style="display:none;">
+        <div class="admin-section">
+          <h3>コラムを追加</h3>
+          <div class="msub-tabs" id="c-add-tabs"></div>
+          <div class="form-row">
+            <div class="form-group"><label>タイトル</label><input type="text" id="c-title" placeholder="ダービー直前考察"></div>
+            <div class="form-group"><label>日付</label><input type="date" id="c-date"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label>本文</label>
+            <textarea id="c-body" style="min-height:120px;" placeholder="コラム本文を書いてください..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="addColumn()">追加する</button>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>登録済みコラム</h3>
+          <div class="msub-tabs" id="c-list-tabs"></div>
+          <div id="col-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<footer>お馬3 POG 2026–2027</footer>
+
+<script>
+const PASS = 'ashiito';
+const MEMBERS = ['A','B','C'];
+
+// データ管理
+function defData(){return{names:{A:'Aさん',B:'Bさん',C:'Cさん'},horses:{A:[],B:[],C:[]},preds:{A:[],B:[],C:[]},columns:{A:[],B:[],C:[]}};}
+function load(){try{const s=localStorage.getItem('pog2026');return s?JSON.parse(s):defData();}catch(e){return defData();}}
+function save(d){localStorage.setItem('pog2026',JSON.stringify(d));}
+let D=load();
+
+// ユーティリティ
+function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
+function totalPts(m){return D.horses[m].reduce((s,h)=>s+(parseInt(h.pts)||0),0);}
+function getRank(m){return MEMBERS.slice().sort((a,b)=>totalPts(b)-totalPts(a)).indexOf(m);}
+function resultLabel(r){return r==='hit'?'的中 ✓':r==='miss'?'外れ ✗':'結果待ち';}
+
+// ページ切替
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+  if(p==='top') renderTop();
+  if(p==='members') renderMembers();
+}
+
+// ===== TOP =====
+function renderTop(){
+  D=load();
+  const sorted=MEMBERS.slice().sort((a,b)=>totalPts(b)-totalPts(a));
+  const medals=['🥇','🥈','🥉'];
+  const rc=['rank-1','rank-2','rank-3'];
+  document.getElementById('ranking-list').innerHTML=sorted.map((m,i)=>`
+    <div class="rank-card ${rc[i]}" onclick="showMember('${m}')">
+      <div class="rank-badge">${medals[i]}</div>
+      <div class="rank-info">
+        <div class="rank-name">${esc(D.names[m])}</div>
+        <div class="rank-horses">${D.horses[m].length?'指名馬：'+D.horses[m].map(h=>esc(h.name)).join('、'):'指名馬未登録'}</div>
+      </div>
+      <div class="rank-points">
+        <div class="points-num">${totalPts(m)}</div>
+        <div class="points-label">ポイント</div>
+      </div>
+    </div>`).join('');
+
+  const allP=[];MEMBERS.forEach(m=>D.preds[m].forEach(p=>allP.push({...p,member:m})));
+  allP.sort((a,b)=>b.id-a.id);
+  const pEl=document.getElementById('top-preds');
+  pEl.innerHTML=allP.length?allP.slice(0,4).map(p=>`
+    <div class="mini-item">
+      <span class="mini-label">${esc(p.race)}</span>
+      <span class="mini-val">${esc(D.names[p.member])}</span>
+    </div>`).join(''):'<div class="mini-item"><span class="mini-label">予想未登録</span></div>';
+
+  const allC=[];MEMBERS.forEach(m=>D.columns[m].forEach(c=>allC.push({...c,member:m})));
+  allC.sort((a,b)=>b.id-a.id);
+  const cEl=document.getElementById('top-columns');
+  cEl.innerHTML=allC.length?allC.slice(0,3).map(c=>`
+    <div class="mini-item" style="flex-direction:column;align-items:flex-start;gap:.1rem;">
+      <span class="mini-label">${esc(D.names[c.member])}「${esc(c.title)}」</span>
+      <span class="mini-val">${c.date}</span>
+    </div>`).join(''):'<div class="mini-item"><span class="mini-label">コラム未登録</span></div>';
+}
+
+// ===== MEMBERS =====
+let curMember='A';
+let innerTab={A:'horses',B:'horses',C:'horses'};
+
+function renderMembers(){
+  D=load();
+  document.getElementById('member-tabs').innerHTML=MEMBERS.map(m=>`
+    <button class="member-tab${m===curMember?' active':''}" id="mtab-${m}" onclick="switchMember('${m}')">${esc(D.names[m])}</button>`).join('');
+  renderMemberPanel();
+}
+
+function switchMember(m){
+  curMember=m;
+  document.querySelectorAll('.member-tab').forEach(t=>t.classList.remove('active'));
+  const el=document.getElementById('mtab-'+m);if(el)el.classList.add('active');
+  renderMemberPanel();
+}
+
+function showMember(m){curMember=m;showPage('members');}
+
+function renderMemberPanel(){
+  const m=curMember;
+  const tab=innerTab[m];
+  const rank=getRank(m);
+  const rankLabel=['🏆 1位','🥈 2位','🥉 3位'][rank];
+  document.getElementById('member-content').innerHTML=`
+    <div class="member-profile">
+      <div class="member-avatar">${esc(D.names[m])[0]}</div>
+      <div>
+        <div class="member-profile-name">${esc(D.names[m])}</div>
+        <div class="member-profile-sub">${rankLabel} · 指名馬${D.horses[m].length}頭</div>
+      </div>
+      <div class="member-profile-pts">
+        <div class="big">${totalPts(m)}</div>
+        <div class="lbl">合計ポイント</div>
+      </div>
+    </div>
+    <div class="inner-tabs">
+      <button class="inner-tab${tab==='horses'?' active':''}" onclick="switchInner('horses')">指名馬</button>
+      <button class="inner-tab${tab==='pred'?' active':''}" onclick="switchInner('pred')">予想</button>
+      <button class="inner-tab${tab==='column'?' active':''}" onclick="switchInner('column')">コラム</button>
+    </div>
+    <div class="inner-panel" id="inner-content">${renderInner(m,tab)}</div>`;
+}
+
+function switchInner(tab){
+  innerTab[curMember]=tab;
+  document.querySelectorAll('.inner-tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  const el=document.getElementById('inner-content');
+  if(el)el.innerHTML=renderInner(curMember,tab);
+}
+
+function renderInner(m,tab){
+  if(tab==='horses'){
+    if(!D.horses[m].length)return'<div class="empty-state">指名馬が登録されていません</div>';
+    return`<table class="horse-table"><thead><tr><th>#</th><th>馬名</th><th>性別</th><th>調教師</th><th>父</th><th>獲得ポイント</th></tr></thead><tbody>`+
+      D.horses[m].map((h,i)=>`<tr><td>${i+1}</td><td class="horse-name">${esc(h.name)}</td><td>${esc(h.sex)||'—'}</td><td>${esc(h.trainer)||'—'}</td><td>${esc(h.sire)||'—'}</td><td><span class="pts-badge${!h.pts||h.pts==0?' pts-zero':''}">${h.pts||0}</span></td></tr>`).join('')+
+      `</tbody></table>`;
+  }
+  if(tab==='pred'){
+    if(!D.preds[m].length)return'<div class="empty-state">予想が登録されていません</div>';
+    return D.preds[m].slice().reverse().map(p=>`
+      <div class="pred-card">
+        <div class="pred-race-name">${esc(p.race)}</div>
+        <div class="pred-detail">${esc(p.detail)}</div>
+        <div class="pred-result pred-${p.result}">${resultLabel(p.result)}</div>
+      </div>`).join('');
+  }
+  if(tab==='column'){
+    if(!D.columns[m].length)return'<div class="empty-state">コラムが登録されていません</div>';
+    return D.columns[m].slice().reverse().map(c=>`
+      <div class="column-post">
+        <div class="post-meta">${c.date}</div>
+        <div class="post-title">${esc(c.title)}</div>
+        <div class="post-body">${esc(c.body)}</div>
+      </div>`).join('');
+  }
+  return'';
+}
+
+// ===== ADMIN =====
+let aCurTab='names';
+let aM={hAdd:'A',hList:'A',pAdd:'A',pList:'A',cAdd:'A',cList:'A'};
+
+function adminLogin(){
+  if(document.getElementById('pw-input').value===PASS){
+    document.getElementById('admin-login-wrap').style.display='none';
+    document.getElementById('admin-main-wrap').style.display='block';
+    renderAdmin();
+  }else{document.getElementById('pw-err').textContent='パスワードが違います';}
+}
+
+function adminLogout(){
+  document.getElementById('admin-login-wrap').style.display='block';
+  document.getElementById('admin-main-wrap').style.display='none';
+  document.getElementById('pw-input').value='';
+  document.getElementById('pw-err').textContent='';
+}
+
+function switchAdminTab(tab,btn){
+  aCurTab=tab;
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['names','horses','preds','columns'].forEach(t=>{
+    const el=document.getElementById('atab-'+t);
+    if(el)el.style.display=(t===tab)?'block':'none';
+  });
+  renderAdmin();
+}
+
+function renderAdmin(){
+  D=load();
+  // names
+  document.getElementById('name-A').value=D.names.A;
+  document.getElementById('name-B').value=D.names.B;
+  document.getElementById('name-C').value=D.names.C;
+  // sub tabs
+  mkSubTabs('h-add-tabs','hAdd');mkSubTabs('h-list-tabs','hList');
+  mkSubTabs('p-add-tabs','pAdd');mkSubTabs('p-list-tabs','pList');
+  mkSubTabs('c-add-tabs','cAdd');mkSubTabs('c-list-tabs','cList');
+  renderHorseList();renderPredList();renderColList();
+  const d=document.getElementById('c-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
+}
+
+function mkSubTabs(id,key){
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML=MEMBERS.map(m=>`
+    <button class="msub-tab${aM[key]===m?' active':''}"
+      onclick="selM('${id}','${key}','${m}')">${esc(D.names[m])}</button>`).join('');
+}
+
+function selM(id,key,m){
+  aM[key]=m;mkSubTabs(id,key);
+  if(key==='hList')renderHorseList();
+  if(key==='pList')renderPredList();
+  if(key==='cList')renderColList();
+}
+
+// --- NAMES ---
+function saveNames(){
+  D.names.A=document.getElementById('name-A').value.trim()||'Aさん';
+  D.names.B=document.getElementById('name-B').value.trim()||'Bさん';
+  D.names.C=document.getElementById('name-C').value.trim()||'Cさん';
+  save(D);alert('ニックネームを保存しました！');renderAdmin();
+}
+
+// --- HORSES ---
+function addHorse(){
+  const m=aM.hAdd;
+  const name=document.getElementById('h-name').value.trim();
+  if(!name){alert('馬名を入力してください');return;}
+  D.horses[m].push({id:Date.now(),name,sex:document.getElementById('h-sex').value,pts:parseInt(document.getElementById('h-pts').value)||0,trainer:document.getElementById('h-trainer').value.trim(),sire:document.getElementById('h-sire').value.trim()});
+  save(D);
+  ['h-name','h-trainer','h-sire'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('h-pts').value='0';
+  aM.hList=m;mkSubTabs('h-list-tabs','hList');renderHorseList();
+  alert(D.names[m]+'の指名馬に「'+name+'」を追加しました');
+}
+
+function updateHorsePts(m,id,val){
+  const h=D.horses[m].find(x=>x.id===id);if(h)h.pts=parseInt(val)||0;save(D);
+}
+
+function delHorse(m,id){
+  if(!confirm('削除しますか？'))return;
+  D.horses[m]=D.horses[m].filter(h=>h.id!==id);save(D);renderHorseList();
+}
+
+function renderHorseList(){
+  const m=aM.hList;const el=document.getElementById('horse-list');if(!el)return;
+  el.innerHTML=D.horses[m].length?D.horses[m].map(h=>`
+    <div class="admin-list-item">
+      <div class="item-main"><div class="item-title">${esc(h.name)} (${esc(h.sex)||'—'})</div><div class="item-sub">父：${esc(h.sire)||'—'} / 調教師：${esc(h.trainer)||'—'}</div></div>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <label style="font-size:.75rem;color:var(--text-light);">pt</label>
+        <input type="number" value="${h.pts||0}" min="0" style="width:70px;padding:.3rem .5rem;border:1.5px solid var(--cream-dark);border-radius:6px;font-size:.85rem;" onchange="updateHorsePts('${m}',${h.id},this.value)">
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="delHorse('${m}',${h.id})">削除</button>
+    </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
+}
+
+// --- PREDS ---
+function addPred(){
+  const m=aM.pAdd;
+  const race=document.getElementById('p-race').value.trim();
+  if(!race){alert('レース名を入力してください');return;}
+  D.preds[m].push({id:Date.now(),race,detail:document.getElementById('p-detail').value.trim(),result:document.getElementById('p-result').value});
+  save(D);
+  ['p-race','p-detail'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-result').value='pending';
+  aM.pList=m;mkSubTabs('p-list-tabs','pList');renderPredList();
+  alert(D.names[m]+'の予想に追加しました');
+}
+
+function updatePredResult(m,id,val){
+  const p=D.preds[m].find(x=>x.id===id);if(p)p.result=val;save(D);
+}
+
+function delPred(m,id){
+  if(!confirm('削除しますか？'))return;
+  D.preds[m]=D.preds[m].filter(p=>p.id!==id);save(D);renderPredList();
+}
+
+function renderPredList(){
+  const m=aM.pList;const el=document.getElementById('pred-list');if(!el)return;
+  el.innerHTML=D.preds[m].length?D.preds[m].slice().reverse().map(p=>`
+    <div class="admin-list-item">
+      <div class="item-main"><div class="item-title">${esc(p.race)}</div><div class="item-sub">${p.detail?esc(p.detail).substring(0,40)+'…':'—'}</div></div>
+      <select style="padding:.3rem .5rem;border:1.5px solid var(--cream-dark);border-radius:6px;font-size:.8rem;" onchange="updatePredResult('${m}',${p.id},this.value)">
+        <option value="pending"${p.result==='pending'?' selected':''}>結果待ち</option>
+        <option value="hit"${p.result==='hit'?' selected':''}>的中 ✓</option>
+        <option value="miss"${p.result==='miss'?' selected':''}>外れ ✗</option>
+      </select>
+      <button class="btn btn-sm btn-danger" onclick="delPred('${m}',${p.id})">削除</button>
+    </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
+}
+
+// --- COLUMNS ---
+function addColumn(){
+  const m=aM.cAdd;
+  const title=document.getElementById('c-title').value.trim();
+  if(!title){alert('タイトルを入力してください');return;}
+  D.columns[m].push({id:Date.now(),title,date:document.getElementById('c-date').value,body:document.getElementById('c-body').value.trim()});
+  save(D);
+  ['c-title','c-body'].forEach(id=>document.getElementById(id).value='');
+  aM.cList=m;mkSubTabs('c-list-tabs','cList');renderColList();
+  alert(D.names[m]+'のコラムに追加しました');
+}
+
+function delColumn(m,id){
+  if(!confirm('削除しますか？'))return;
+  D.columns[m]=D.columns[m].filter(c=>c.id!==id);save(D);renderColList();
+}
+
+function renderColList(){
+  const m=aM.cList;const el=document.getElementById('col-list');if(!el)return;
+  el.innerHTML=D.columns[m].length?D.columns[m].slice().reverse().map(c=>`
+    <div class="admin-list-item">
+      <div class="item-main"><div class="item-title">${esc(c.title)}</div><div class="item-sub">${c.date}</div></div>
+      <button class="btn btn-sm btn-danger" onclick="delColumn('${m}',${c.id})">削除</button>
+    </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
+}
+
+// INIT
+renderTop();
+</script>
 </body>
 </html>
