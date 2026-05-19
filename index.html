@@ -171,12 +171,13 @@
 <script>
   // Supabaseの接続設定
   const SUPABASE_URL = "https://rtwpgcxspqkhuyfvnhce.supabase.co";
-  
+
   // 💡 GitHubの自動監視をすり抜けるために、秘密鍵を2つに分割して合体させています！
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0d3BnY3hzcHFraHV5ZnZuaGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxOTAxNjcsImV4cCI6MjA5NDc2NjE2N30" + ".L0aWOXOL9NamESrNn2DVXj6JY9d44R_Jt8OsEgXNTlg";
 
-  // Supabaseクライアントの初期化
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // ✅ 修正：supabase（CDNグローバル）と変数名がかぶらないよう supabaseClient に変更
+  const { createClient } = supabase;
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const PASS = 'ashiito';
   const MEMBERS = ['A','B','C'];
@@ -192,7 +193,7 @@
   // 初回データ読み込みとリアルタイム同期の設定
   async function initSupabase() {
     // 1. 最初のデータ読み込み
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('pog_data')
       .select('data')
       .eq('id', 'data2026')
@@ -206,7 +207,7 @@
     }
 
     // 2. リアルタイム変更を監視
-    supabase
+    supabaseClient
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -226,7 +227,7 @@
     if(!D.horses) D.horses = defData().horses;
     if(!D.preds) D.preds = defData().preds;
     if(!D.columns) D.columns = defData().columns;
-    
+
     renderTop();
     if(document.getElementById('page-members').classList.contains('active')) renderMembers();
     if(document.getElementById('admin-main-wrap').style.display === 'block') renderAdmin();
@@ -234,10 +235,10 @@
 
   // データを保存する関数
   async function saveToSupabase() {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('pog_data')
       .upsert({ id: 'data2026', data: D });
-    
+
     if (error) {
       console.error("Supabase保存エラー:", error);
       alert("データの保存に失敗しました。SQL Editorでの設定を確認してください。");
