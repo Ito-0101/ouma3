@@ -150,3 +150,61 @@ footer{text-align:center;padding:2rem;color:rgba(255,255,255,.3);font-size:.75re
   .inner-panel{padding:1rem;}
   .form-row,.form-row.triple{grid-template-columns:1fr;}
 }
+
+/* ==========================================
+   コラム開閉（アコーディオン）用の追加デザイン
+   ========================================== */
+.column-post {
+  border: 1px solid var(--cream-dark);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.column-header-clickable {
+  padding: 1rem;
+  background: var(--cream-light);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+}
+.column-header-clickable:hover {
+  background: rgba(212, 163, 115, 0.1);
+}
+.column-title-wrap {
+  flex: 1;
+}
+.column-arrow {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  transition: transform 0.3s;
+  margin-left: 1rem;
+}
+.column-post.open .column-arrow {
+  transform: rotate(180deg);
+}
+.column-body-wrap {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+.column-post.open .column-body-wrap {
+  max-height: 2000px; /* 本文が長くても収まる十分な高さ */
+  border-top: 1px solid rgba(212, 163, 115, 0.2);
+}
+.column-body-inner {
+  padding: 1.2rem;
+  line-height: 1.8;
+  white-space: pre-wrap; /* 改行をそのまま反映 */
+}
+.clickable-top-item {
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+.clickable-top-item:hover {
+  background: rgba(212, 163, 115, 0.05);
+  transform: translateX(3px);
+}

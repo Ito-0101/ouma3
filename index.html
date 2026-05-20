@@ -171,13 +171,9 @@
 <script>
   // Supabaseの接続設定
   const SUPABASE_URL = "https://rtwpgcxspqkhuyfvnhce.supabase.co";
-
-  // 💡 GitHubの自動監視をすり抜けるために、秘密鍵を2つに分割して合体させています！
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0d3BnY3hzcHFraHV5ZnZuaGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxOTAxNjcsImV4cCI6MjA5NDc2NjE2N30" + ".L0aWOXOL9NamESrNn2DVXj6JY9d44R_Jt8OsEgXNTlg";
 
-  // ✅ 修正：supabase（CDNグローバル）と変数名がかぶらないよう supabaseClient に変更
-  const { createClient } = supabase;
-  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const PASS = 'ashiito';
   const MEMBERS = ['A','B','C'];
@@ -190,10 +186,8 @@
   function getRank(m){return MEMBERS.slice().sort((a,b)=>totalPts(b)-totalPts(a)).indexOf(m);}
   function resultLabel(r){return r==='hit'?'的中 ✓':r==='miss'?'外れ ✗':'結果待ち';}
 
-  // 初回データ読み込みとリアルタイム同期の設定
   async function initSupabase() {
-    // 1. 最初のデータ読み込み
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from('pog_data')
       .select('data')
       .eq('id', 'data2026')
@@ -202,12 +196,10 @@
     if (data && data.data) {
       updateLocalData(data.data);
     } else {
-      // 万が一データがなかったら初期化
       await saveToSupabase();
     }
 
-    // 2. リアルタイム変更を監視
-    supabaseClient
+    supabase
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -227,28 +219,21 @@
     if(!D.horses) D.horses = defData().horses;
     if(!D.preds) D.preds = defData().preds;
     if(!D.columns) D.columns = defData().columns;
-
+    
     renderTop();
     if(document.getElementById('page-members').classList.contains('active')) renderMembers();
     if(document.getElementById('admin-main-wrap').style.display === 'block') renderAdmin();
   }
 
-  // データを保存する関数
   async function saveToSupabase() {
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from('pog_data')
       .upsert({ id: 'data2026', data: D });
-
-    if (error) {
-      console.error("Supabase保存エラー:", error);
-      alert("データの保存に失敗しました。SQL Editorでの設定を確認してください。");
-    }
+    if (error) console.error("Supabase保存エラー:", error);
   }
 
-  // 初期化実行
   initSupabase();
 
-  // ページ切替
   window.showPage = function(p){
     document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(el=>el.classList.remove('active'));
@@ -289,7 +274,7 @@
     allC.sort((a,b)=>b.id-a.id);
     const cEl=document.getElementById('top-columns');
     cEl.innerHTML=allC.length?allC.slice(0,3).map(c=>`
-      <div class="mini-item" style="flex-direction:column;align-items:flex-start;gap:.1rem;">
+      <div class="mini-item clickable-top-item" style="flex-direction:column;align-items:flex-start;gap:.1rem;" onclick="showColumnDetail('${c.member}', ${c.id})">
         <span class="mini-label">${esc(D.names[c.member])}「${esc(c.title)}」</span>
         <span class="mini-val">${c.date}</span>
       </div>`).join(''):'<div class="mini-item"><span class="mini-label">コラム未登録</span></div>';
@@ -312,7 +297,18 @@
     renderMemberPanel();
   }
 
-  window.showMember = function(m){curMember=m;showPage('members');}
+  window.showMember = function(m){curMember=m;innerTab[m]='horses';showPage('members');}
+  
+  window.showColumnDetail = function(m, columnId){
+    curMember = m;
+    innerTab[m] = 'column';
+    showPage('members');
+    setTimeout(() => {
+      toggleColumn(columnId);
+      const el = document.getElementById('col-' + columnId);
+      if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  }
 
   function renderMemberPanel(){
     const m=curMember;
@@ -347,6 +343,22 @@
     if(el)el.innerHTML=renderInner(curMember,tab);
   }
 
+  window.toggleColumn = function(id) {
+    const el = document.getElementById('col-' + id);
+    if (!el) return;
+    
+    const isWrapOpen = el.classList.contains('open');
+    const bodyWrap = el.querySelector('.column-body-wrap');
+    
+    if (isWrapOpen) {
+      el.classList.remove('open');
+      bodyWrap.style.maxHeight = '0';
+    } else {
+      el.classList.add('open');
+      bodyWrap.style.maxHeight = bodyWrap.scrollHeight + 'px';
+    }
+  }
+
   function renderInner(m,tab){
     if(tab==='horses'){
       if(!D.horses[m] || !D.horses[m].length)return'<div class="empty-state">指名馬が登録されていません</div>';
@@ -366,10 +378,19 @@
     if(tab==='column'){
       if(!D.columns[m] || !D.columns[m].length)return'<div class="empty-state">コラムが登録されていません</div>';
       return D.columns[m].slice().reverse().map(c=>`
-        <div class="column-post">
-          <div class="post-meta">${c.date}</div>
-          <div class="post-title">${esc(c.title)}</div>
-          <div class="post-body">${esc(c.body)}</div>
+        <div class="column-post" id="col-${c.id}">
+          <div class="column-header-clickable" onclick="toggleColumn(${c.id})">
+            <div class="column-title-wrap">
+              <div class="post-meta" style="margin-bottom:0.2rem;">${c.date}</div>
+              <div class="post-title" style="margin-bottom:0; font-size:1.1rem;">${esc(c.title)}</div>
+            </div>
+            <div class="column-arrow">▼</div>
+          </div>
+          <div class="column-body-wrap">
+            <div class="column-body-inner">
+              <div class="post-body">${esc(c.body)}</div>
+            </div>
+          </div>
         </div>`).join('');
     }
     return '';
@@ -430,7 +451,6 @@
     if(key==='cList')renderColList();
   }
 
-  // --- NAMES ---
   window.saveNames = async function(){
     D.names.A=document.getElementById('name-A').value.trim()||'Aさん';
     D.names.B=document.getElementById('name-B').value.trim()||'Bさん';
@@ -440,7 +460,6 @@
     renderAdmin();
   }
 
-  // --- HORSES ---
   window.addHorse = async function(){
     const m=aM.hAdd;
     const name=document.getElementById('h-name').value.trim();
@@ -479,7 +498,6 @@
       </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
   }
 
-  // --- PREDS ---
   window.addPred = async function(){
     const m=aM.pAdd;
     const race=document.getElementById('p-race').value.trim();
@@ -519,7 +537,6 @@
       </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
   }
 
-  // --- COLUMNS ---
   window.addColumn = async function(){
     const m=aM.cAdd;
     const title=document.getElementById('c-title').value.trim();
