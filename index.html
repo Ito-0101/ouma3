@@ -87,7 +87,7 @@
 
       <div id="atab-horses" style="display:none;">
         <div class="admin-section">
-          <h3>指名馬を追加</h3>
+          <h3 id="h-form-title">指名馬を追加</h3>
           <div class="msub-tabs" id="h-add-tabs"></div>
           <div class="form-row triple">
             <div class="form-group"><label>馬名</label><input type="text" id="h-name" placeholder="ロブチェン"></div>
@@ -98,12 +98,12 @@
             <div class="form-group"><label>調教師</label><input type="text" id="h-trainer" placeholder="杉山晴紀"></div>
             <div class="form-group"><label>父</label><input type="text" id="h-sire" placeholder="ワールドプレミア"></div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions" id="h-btn-wrap">
             <button class="btn btn-primary" onclick="addHorse()">追加する</button>
           </div>
         </div>
         <div class="admin-section">
-          <h3>登録済み指名馬 — ポイント更新・削除</h3>
+          <h3>登録済み指名馬 — 編集・削除</h3>
           <div class="msub-tabs" id="h-list-tabs"></div>
           <div id="horse-list"></div>
         </div>
@@ -111,7 +111,7 @@
 
       <div id="atab-preds" style="display:none;">
         <div class="admin-section">
-          <h3>予想を追加</h3>
+          <h3 id="p-form-title">予想を追加</h3>
           <div class="msub-tabs" id="p-add-tabs"></div>
           <div class="form-row">
             <div class="form-group"><label>レース名</label><input type="text" id="p-race" placeholder="東京優駿"></div>
@@ -125,18 +125,18 @@
           </div>
           <div class="form-group" style="margin-bottom:.75rem;">
             <label>本命・買い目</label>
-            <input type="text" id="p-bet" placeholder="例：◎クロワデュノール 〇ミュージアムマイル / 馬単 13-7">
+            <input type="text" id="p-bet" placeholder="例：◎クロワデュノール 〇ミュージアムマイル / 馬連 3-7">
           </div>
           <div class="form-group" style="margin-bottom:.75rem;">
             <label>予想内容・コメント（※行頭に「## 」をつけると自動で目次になります）</label>
             <textarea id="p-detail" placeholder="## 展開の考察&#10;ここに展開やペースを分析...&#10;&#10;## 各馬の評価&#10;各馬の短評などを書く..."></textarea>
           </div>
-          <div class="form-actions">
+          <div class="form-actions" id="p-btn-wrap">
             <button class="btn btn-primary" onclick="addPred()">追加する</button>
           </div>
         </div>
         <div class="admin-section">
-          <h3>登録済み予想 — 結果更新・削除</h3>
+          <h3>登録済み予想 — 編集・削除</h3>
           <div class="msub-tabs" id="p-list-tabs"></div>
           <div id="pred-list"></div>
         </div>
@@ -144,7 +144,7 @@
 
       <div id="atab-columns" style="display:none;">
         <div class="admin-section">
-          <h3>コラムを追加</h3>
+          <h3 id="c-form-title">コラムを追加</h3>
           <div class="msub-tabs" id="c-add-tabs"></div>
           <div class="form-row">
             <div class="form-group"><label>タイトル</label><input type="text" id="c-title" placeholder="ダービー直前考察"></div>
@@ -154,12 +154,12 @@
             <label>本文（※行頭に「## 」をつけると自動で見出し・目次になります）</label>
             <textarea id="c-body" style="min-height:150px;" placeholder="## 1. 注目馬の調教考察&#10;ここに本文を書きます...&#10;&#10;## 2. 最終結論&#10;ここに結論を書きます..."></textarea>
           </div>
-          <div class="form-actions">
+          <div class="form-actions" id="c-btn-wrap">
             <button class="btn btn-primary" onclick="addColumn()">追加する</button>
           </div>
         </div>
         <div class="admin-section">
-          <h3>登録済みコラム</h3>
+          <h3>登録済みコラム — 編集・削除</h3>
           <div class="msub-tabs" id="c-list-tabs"></div>
           <div id="col-list"></div>
         </div>
@@ -185,6 +185,11 @@
 
   function defData(){return{names:{A:'Aさん',B:'Bさん',C:'Cさん'},horses:{A:[],B:[],C:[]},preds:{A:[],B:[],C:[]},columns:{A:[],B:[],C:[]}};}
   let D = defData();
+
+  // 編集中のアイテムIDを追跡する変数
+  let editHorseId = null;
+  let editPredId = null;
+  let editColId = null;
 
   function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
   function totalPts(m){return D.horses[m]?D.horses[m].reduce((s,h)=>s+(parseInt(h.pts)||0),0):0;}
@@ -499,6 +504,10 @@
       const el=document.getElementById('atab-'+t);
       if(el)el.style.display=(t===tab)?'block':'none';
     });
+    // タブ切り替え時に編集状態をリセット
+    resetHorseForm();
+    resetPredForm();
+    resetColForm();
     renderAdmin();
   }
 
@@ -522,9 +531,13 @@
 
   window.selM = function(id,key,m){
     aM[key]=m;mkSubTabs(id,key);
-    if(key==='hList')renderHorseList();
-    if(key==='pList')renderPredList();
-    if(key==='cList')renderColList();
+    if(key==='hAdd' && editHorseId) resetHorseForm();
+    if(key==='pAdd' && editPredId) resetPredForm();
+    if(key==='cAdd' && editColId) resetColForm();
+    
+    if(key==='hList' || key==='hAdd')renderHorseList();
+    if(key==='pList' || key==='pAdd')renderPredList();
+    if(key==='cList' || key==='cAdd')renderColList();
   }
 
   window.saveNames = async function(){
@@ -536,6 +549,7 @@
     renderAdmin();
   }
 
+  // ===== HORSES MODIFICATION =====
   window.addHorse = async function(){
     const m=aM.hAdd;
     const name=document.getElementById('h-name').value.trim();
@@ -543,19 +557,61 @@
     if(!D.horses[m]) D.horses[m] = [];
     D.horses[m].push({id:Date.now(),name,sex:document.getElementById('h-sex').value,pts:parseInt(document.getElementById('h-pts').value)||0,trainer:document.getElementById('h-trainer').value.trim(),sire:document.getElementById('h-sire').value.trim()});
     await saveToSupabase();
-    ['h-name','h-trainer','h-sire'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('h-pts').value='0';
+    resetHorseForm();
     aM.hList=m;mkSubTabs('h-list-tabs','hList');renderHorseList();
     alert(D.names[m]+'の指名馬に「'+name+'」を追加し、共有しました');
   }
 
-  window.updateHorsePts = async function(m,id,val){
-    const h=D.horses[m].find(x=>x.id===id);if(h)h.pts=parseInt(val)||0;
-    await saveToSupabase();
+  window.startEditHorse = function(m, id) {
+    const h = D.horses[m].find(x=>x.id===id);
+    if(!h) return;
+    editHorseId = id;
+    aM.hAdd = m;
+    mkSubTabs('h-add-tabs','hAdd');
+    
+    document.getElementById('h-form-title').textContent = `${D.names[m]}の指名馬を編集中`;
+    document.getElementById('h-name').value = h.name;
+    document.getElementById('h-sex').value = h.sex || '牡';
+    document.getElementById('h-pts').value = h.pts || 0;
+    document.getElementById('h-trainer').value = h.trainer || '';
+    document.getElementById('h-sire').value = h.sire || '';
+    document.getElementById('h-btn-wrap').innerHTML = `
+      <button class="btn btn-primary" onclick="updateHorse()">更新する</button>
+      <button class="btn" style="background:#ccc;color:#333;" onclick="resetHorseForm()">キャンセル</button>`;
+    document.getElementById('h-form-title').scrollIntoView({behavior:'smooth'});
+  }
+
+  window.updateHorse = async function() {
+    const m = aM.hAdd;
+    const name = document.getElementById('h-name').value.trim();
+    if(!name){alert('馬名を入力してください');return;}
+    
+    const h = D.horses[m].find(x=>x.id===editHorseId);
+    if(h) {
+      h.name = name;
+      h.sex = document.getElementById('h-sex').value;
+      h.pts = parseInt(document.getElementById('h-pts').value)||0;
+      h.trainer = document.getElementById('h-trainer').value.trim();
+      h.sire = document.getElementById('h-sire').value.trim();
+      await saveToSupabase();
+      alert('指名馬情報を更新しました！');
+    }
+    resetHorseForm();
+    renderHorseList();
+  }
+
+  window.resetHorseForm = function() {
+    editHorseId = null;
+    document.getElementById('h-form-title').textContent = "指名馬を追加";
+    ['h-name','h-trainer','h-sire'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('h-pts').value='0';
+    document.getElementById('h-sex').value='牡';
+    document.getElementById('h-btn-wrap').innerHTML = `<button class="btn btn-primary" onclick="addHorse()">追加する</button>`;
   }
 
   window.delHorse = async function(m,id){
     if(!confirm('削除しますか？'))return;
+    if(editHorseId === id) resetHorseForm();
     D.horses[m]=D.horses[m].filter(h=>h.id!==id);
     await saveToSupabase();
     renderHorseList();
@@ -565,15 +621,18 @@
     const m=aM.hList;const el=document.getElementById('horse-list');if(!el)return;
     el.innerHTML=D.horses[m] && D.horses[m].length?D.horses[m].map(h=>`
       <div class="admin-list-item">
-        <div class="item-main"><div class="item-title">${esc(h.name)} (${esc(h.sex)||'—'})</div><div class="item-sub">父：${esc(h.sire)||'—'} / 調教師：${esc(h.trainer)||'—'}</div></div>
-        <div style="display:flex;align-items:center;gap:.5rem;">
-          <label style="font-size:.75rem;color:var(--text-light);">pt</label>
-          <input type="number" value="${h.pts||0}" min="0" style="width:70px;padding:.3rem .5rem;border:1.5px solid var(--cream-dark);border-radius:6px;font-size:.85rem;" onchange="updateHorsePts('${m}',${h.id},this.value)">
+        <div class="item-main">
+          <div class="item-title">${esc(h.name)} (${esc(h.sex)||'—'}) <span class="pts-badge" style="font-size:0.75rem; padding:0.1rem 0.4rem; vertical-align:middle;">${h.pts||0} pt</span></div>
+          <div class="item-sub">父：${esc(h.sire)||'—'} / 調教師：${esc(h.trainer)||'—'}</div>
         </div>
-        <button class="btn btn-sm btn-danger" onclick="delHorse('${m}',${h.id})">削除</button>
+        <div style="display:flex;gap:.3rem;">
+          <button class="btn btn-sm" style="background:var(--accent); color:white;" onclick="startEditHorse('${m}',${h.id})">編集</button>
+          <button class="btn btn-sm btn-danger" onclick="delHorse('${m}',${h.id})">削除</button>
+        </div>
       </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
   }
 
+  // ===== PREDICTIONS MODIFICATION =====
   window.addPred = async function(){
     const m=aM.pAdd;
     const race=document.getElementById('p-race').value.trim();
@@ -587,19 +646,58 @@
       result:document.getElementById('p-result').value
     });
     await saveToSupabase();
-    ['p-race','p-bet','p-detail'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('p-result').value='pending';
+    resetPredForm();
     aM.pList=m;mkSubTabs('p-list-tabs','pList');renderPredList();
     alert(D.names[m]+'の予想を追加し、共有しました');
   }
 
-  window.updatePredResult = async function(m,id,val){
-    const p=D.preds[m].find(x=>x.id===id);if(p)p.result=val;
-    await saveToSupabase();
+  window.startEditPred = function(m, id) {
+    const p = D.preds[m].find(x=>x.id===id);
+    if(!p) return;
+    editPredId = id;
+    aM.pAdd = m;
+    mkSubTabs('p-add-tabs','pAdd');
+    
+    document.getElementById('p-form-title').textContent = `${D.names[m]}の予想を編集中`;
+    document.getElementById('p-race').value = p.race;
+    document.getElementById('p-result').value = p.result || 'pending';
+    document.getElementById('p-bet').value = p.bet || '';
+    document.getElementById('p-detail').value = p.detail || '';
+    document.getElementById('p-btn-wrap').innerHTML = `
+      <button class="btn btn-primary" onclick="updatePred()">更新する</button>
+      <button class="btn" style="background:#ccc;color:#333;" onclick="resetPredForm()">キャンセル</button>`;
+    document.getElementById('p-form-title').scrollIntoView({behavior:'smooth'});
+  }
+
+  window.updatePred = async function() {
+    const m = aM.pAdd;
+    const race = document.getElementById('p-race').value.trim();
+    if(!race){alert('レース名を入力してください');return;}
+    
+    const p = D.preds[m].find(x=>x.id===editPredId);
+    if(p) {
+      p.race = race;
+      p.result = document.getElementById('p-result').value;
+      p.bet = document.getElementById('p-bet').value.trim();
+      p.detail = document.getElementById('p-detail').value.trim();
+      await saveToSupabase();
+      alert('予想情報を更新しました！');
+    }
+    resetPredForm();
+    renderPredList();
+  }
+
+  window.resetPredForm = function() {
+    editPredId = null;
+    document.getElementById('p-form-title').textContent = "予想を追加";
+    ['p-race','p-bet','p-detail'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('p-result').value='pending';
+    document.getElementById('p-btn-wrap').innerHTML = `<button class="btn btn-primary" onclick="addPred()">追加する</button>`;
   }
 
   window.delPred = async function(m,id){
     if(!confirm('削除しますか？'))return;
+    if(editPredId === id) resetPredForm();
     D.preds[m]=D.preds[m].filter(p=>p.id!==id);
     await saveToSupabase();
     renderPredList();
@@ -610,18 +708,17 @@
     el.innerHTML=D.preds[m] && D.preds[m].length?D.preds[m].slice().reverse().map(p=>`
       <div class="admin-list-item">
         <div class="item-main">
-          <div class="item-title">${esc(p.race)}</div>
+          <div class="item-title">${esc(p.race)} <span class="pred-result pred-${p.result}" style="font-size:0.7rem; padding:0.1rem 0.3rem; float:none; display:inline-block; position:static; vertical-align:middle;">${resultLabel(p.result)}</span></div>
           <div class="item-sub">${p.bet ? '🎫 '+esc(p.bet) : p.detail?esc(p.detail).substring(0,40)+'…':'—'}</div>
         </div>
-        <select style="padding:.3rem .5rem;border:1.5px solid var(--cream-dark);border-radius:6px;font-size:.8rem;" onchange="updatePredResult('${m}',${p.id},this.value)">
-          <option value="pending"${p.result==='pending'?' selected':''}>結果待ち</option>
-          <option value="hit"${p.result==='hit'?' selected':''}>的中 ✓</option>
-          <option value="miss"${p.result==='miss'?' selected':''}>外れ ✗</option>
-        </select>
-        <button class="btn btn-sm btn-danger" onclick="delPred('${m}',${p.id})">削除</button>
+        <div style="display:flex;gap:.3rem;">
+          <button class="btn btn-sm" style="background:var(--accent); color:white;" onclick="startEditPred('${m}',${p.id})">編集</button>
+          <button class="btn btn-sm btn-danger" onclick="delPred('${m}',${p.id})">削除</button>
+        </div>
       </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
   }
 
+  // ===== COLUMNS MODIFICATION =====
   window.addColumn = async function(){
     const m=aM.cAdd;
     const title=document.getElementById('c-title').value.trim();
@@ -629,13 +726,57 @@
     if(!D.columns[m]) D.columns[m] = [];
     D.columns[m].push({id:Date.now(),title,date:document.getElementById('c-date').value,body:document.getElementById('c-body').value.trim()});
     await saveToSupabase();
-    ['c-title','c-body'].forEach(id=>document.getElementById(id).value='');
+    resetColForm();
     aM.cList=m;mkSubTabs('c-list-tabs','cList');renderColList();
     alert(D.names[m]+'のコラムを追加し、共有しました');
   }
 
+  window.startEditColumn = function(m, id) {
+    const c = D.columns[m].find(x=>x.id===id);
+    if(!c) return;
+    editColId = id;
+    aM.cAdd = m;
+    mkSubTabs('c-add-tabs','cAdd');
+    
+    document.getElementById('c-form-title').textContent = `${D.names[m]}のコラムを編集中`;
+    document.getElementById('c-title').value = c.title;
+    document.getElementById('c-date').value = c.date;
+    document.getElementById('c-body').value = c.body || '';
+    document.getElementById('c-btn-wrap').innerHTML = `
+      <button class="btn btn-primary" onclick="updateColumn()">更新する</button>
+      <button class="btn" style="background:#ccc;color:#333;" onclick="resetColForm()">キャンセル</button>`;
+    document.getElementById('c-form-title').scrollIntoView({behavior:'smooth'});
+  }
+
+  window.updateColumn = async function() {
+    const m = aM.cAdd;
+    const title = document.getElementById('c-title').value.trim();
+    if(!title){alert('タイトルを入力してください');return;}
+    
+    const c = D.columns[m].find(x=>x.id===editColId);
+    if(c) {
+      c.title = title;
+      c.date = document.getElementById('c-date').value;
+      c.body = document.getElementById('c-body').value.trim();
+      await saveToSupabase();
+      alert('コラムを更新しました！');
+    }
+    resetColForm();
+    renderColList();
+  }
+
+  window.resetColForm = function() {
+    editColId = null;
+    document.getElementById('c-form-title').textContent = "コラムを追加";
+    document.getElementById('c-title').value = '';
+    document.getElementById('c-body').value = '';
+    document.getElementById('c-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('c-btn-wrap').innerHTML = `<button class="btn btn-primary" onclick="addColumn()">追加する</button>`;
+  }
+
   window.delColumn = async function(m,id){
     if(!confirm('削除しますか？'))return;
+    if(editColId === id) resetColForm();
     D.columns[m]=D.columns[m].filter(c=>c.id!==id);
     await saveToSupabase();
     renderColList();
@@ -646,7 +787,10 @@
     el.innerHTML=D.columns[m] && D.columns[m].length?D.columns[m].slice().reverse().map(c=>`
       <div class="admin-list-item">
         <div class="item-main"><div class="item-title">${esc(c.title)}</div><div class="item-sub">${c.date}</div></div>
-        <button class="btn btn-sm btn-danger" onclick="delColumn('${m}',${c.id})">削除</button>
+        <div style="display:flex;gap:.3rem;">
+          <button class="btn btn-sm" style="background:var(--accent); color:white;" onclick="startEditColumn('${m}',${c.id})">編集</button>
+          <button class="btn btn-sm btn-danger" onclick="delColumn('${m}',${c.id})">削除</button>
+        </div>
       </div>`).join(''):'<div style="color:var(--text-light);font-size:.85rem;padding:.5rem;">登録なし</div>';
   }
 </script>
