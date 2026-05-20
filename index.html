@@ -173,7 +173,9 @@
   const SUPABASE_URL = "https://rtwpgcxspqkhuyfvnhce.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0d3BnY3hzcHFraHV5ZnZuaGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxOTAxNjcsImV4cCI6MjA5NDc2NjE2N30" + ".L0aWOXOL9NamESrNn2DVXj6JY9d44R_Jt8OsEgXNTlg";
 
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // ✅ 修正：変数名の衝突を回避
+  const { createClient } = supabase;
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const PASS = 'ashiito';
   const MEMBERS = ['A','B','C'];
@@ -187,7 +189,7 @@
   function resultLabel(r){return r==='hit'?'的中 ✓':r==='miss'?'外れ ✗':'結果待ち';}
 
   async function initSupabase() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('pog_data')
       .select('data')
       .eq('id', 'data2026')
@@ -199,7 +201,7 @@
       await saveToSupabase();
     }
 
-    supabase
+    supabaseClient
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -226,7 +228,7 @@
   }
 
   async function saveToSupabase() {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('pog_data')
       .upsert({ id: 'data2026', data: D });
     if (error) console.error("Supabase保存エラー:", error);
@@ -346,10 +348,8 @@
   window.toggleColumn = function(id) {
     const el = document.getElementById('col-' + id);
     if (!el) return;
-    
     const isWrapOpen = el.classList.contains('open');
     const bodyWrap = el.querySelector('.column-body-wrap');
-    
     if (isWrapOpen) {
       el.classList.remove('open');
       bodyWrap.style.maxHeight = '0';
