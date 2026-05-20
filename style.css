@@ -208,3 +208,66 @@ footer{text-align:center;padding:2rem;color:rgba(255,255,255,.3);font-size:.75re
   background: rgba(212, 163, 115, 0.05);
   transform: translateX(3px);
 }
+
+/* コラム内の目次スタイリング */
+.column-toc {
+  background-color: var(--cream-light, #fbfaf7);
+  border: 1px solid var(--cream-dark, #e6dfd3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+.toc-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main, #2c2520);
+  margin-bottom: 0.5rem;
+  border-bottom: 2px solid var(--accent, #c3a475);
+  display: inline-block;
+  padding-bottom: 0.1rem;
+}
+.column-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.column-toc li {
+  margin: 0.4rem 0;
+  padding-left: 1.2rem;
+  position: relative;
+}
+.column-toc li::before {
+  content: "•";
+  color: var(--accent, #c3a475);
+  font-weight: bold;
+  position: absolute;
+  left: 0.3rem;
+  top: 0;
+}
+.column-toc a {
+  color: #4a6fa5; /* 押しやすいリンクカラー */
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+.column-toc a:hover {
+  text-decoration: underline;
+  color: var(--accent, #c3a475);
+}
+
+/* 本文内の見出しスタイリング */
+.col-heading {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main, #2c2520);
+  border-left: 4px solid var(--accent, #c3a475);
+  padding-left: 0.6rem;
+  margin: 1.5rem 0 0.8rem 0;
+  background: linear-gradient(to right, rgba(195,164,117,0.08), transparent);
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+.post-body-text {
+  line-height: 1.7;
+}

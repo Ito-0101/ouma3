@@ -147,8 +147,8 @@
             <div class="form-group"><label>日付</label><input type="date" id="c-date"></div>
           </div>
           <div class="form-group" style="margin-bottom:.75rem;">
-            <label>本文</label>
-            <textarea id="c-body" style="min-height:120px;" placeholder="コラム本文を書いてください..."></textarea>
+            <label>本文（※行頭に「## 」をつけると自動で見出し・目次になります）</label>
+            <textarea id="c-body" style="min-height:150px;" placeholder="## 1. 注目馬の調教考察&#10;ここに本文を書きます...&#10;&#10;## 2. 最終結論&#10;ここに結論を書きます..."></textarea>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary" onclick="addColumn()">追加する</button>
@@ -173,7 +173,6 @@
   const SUPABASE_URL = "https://rtwpgcxspqkhuyfvnhce.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0d3BnY3hzcHFraHV5ZnZuaGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxOTAxNjcsImV4cCI6MjA5NDc2NjE2N30" + ".L0aWOXOL9NamESrNn2DVXj6JY9d44R_Jt8OsEgXNTlg";
 
-  // ✅ 修正：変数名の衝突を回避
   const { createClient } = supabase;
   const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -359,6 +358,48 @@
     }
   }
 
+  // 目次アンカーリンクへのスムーズスクロール関数
+  window.scrollToHeading = function(colId, headingIdx) {
+    const target = document.getElementById(`h-target-${colId}-${headingIdx}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  // 🔴 変更：コラム本文と目次をパースしてHTML化するロジック
+  function parseColumnContent(colId, rawBody) {
+    const lines = rawBody.split('\n');
+    const headings = [];
+    let parsedContentHtml = '';
+
+    // 1行ずつ解析して、見出し(## )の抽出と本文の構築
+    lines.forEach((line) => {
+      if (line.startsWith('## ')) {
+        const title = line.replace('## ', '').trim();
+        const idx = headings.length;
+        headings.push({ title, idx });
+        // 本文内にアンカー用のID付き見出しタグを埋め込む
+        parsedContentHtml += `<h4 class="col-heading" id="h-target-${colId}-${idx}">${esc(title)}</h4>`;
+      } else {
+        parsedContentHtml += `<div>${esc(line) || '&nbsp;'}</div>`;
+      }
+    });
+
+    // 目次HTMLの生成
+    let tocHtml = '';
+    if (headings.length > 0) {
+      tocHtml = `
+        <div class="column-toc">
+          <div class="toc-title">📌 目次</div>
+          <ul>
+            ${headings.map(h => `<li><a href="javascript:void(0);" onclick="scrollToHeading(${colId}, ${h.idx}); event.stopPropagation();">${esc(h.title)}</a></li>`).join('')}
+          </ul>
+        </div>`;
+    }
+
+    return tocHtml + `<div class="post-body-text">${parsedContentHtml}</div>`;
+  }
+
   function renderInner(m,tab){
     if(tab==='horses'){
       if(!D.horses[m] || !D.horses[m].length)return'<div class="empty-state">指名馬が登録されていません</div>';
@@ -388,7 +429,7 @@
           </div>
           <div class="column-body-wrap">
             <div class="column-body-inner">
-              <div class="post-body">${esc(c.body)}</div>
+              <div class="post-body">${parseColumnContent(c.id, c.body)}</div>
             </div>
           </div>
         </div>`).join('');
