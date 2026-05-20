@@ -5,6 +5,7 @@
   --brown:#3d2b1f; --text-mid:#4a4a3a; --text-light:#7a7a6a;
   --accent-red:#8b1a1a; --white:#ffffff;
   --shadow:0 4px 20px rgba(0,0,0,.15);
+  --accent:#c9a84c;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Noto Sans JP',sans-serif;background:var(--green-dark);color:#1a1a1a;min-height:100vh;}
