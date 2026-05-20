@@ -90,13 +90,13 @@
           <h3>指名馬を追加</h3>
           <div class="msub-tabs" id="h-add-tabs"></div>
           <div class="form-row triple">
-            <div class="form-group"><label>馬名</label><input type="text" id="h-name" placeholder="ダイヤモンドライン"></div>
+            <div class="form-group"><label>馬名</label><input type="text" id="h-name" placeholder="ロブチェン"></div>
             <div class="form-group"><label>性別</label><select id="h-sex"><option>牡</option><option>牝</option><option>セ</option></select></div>
             <div class="form-group"><label>獲得ポイント</label><input type="number" id="h-pts" placeholder="0" value="0" min="0"></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label>調教師</label><input type="text" id="h-trainer" placeholder="田中誠一"></div>
-            <div class="form-group"><label>父</label><input type="text" id="h-sire" placeholder="エピファネイア"></div>
+            <div class="form-group"><label>調教師</label><input type="text" id="h-trainer" placeholder="杉山晴紀"></div>
+            <div class="form-group"><label>父</label><input type="text" id="h-sire" placeholder="ワールドプレミア"></div>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary" onclick="addHorse()">追加する</button>
@@ -114,7 +114,7 @@
           <h3>予想を追加</h3>
           <div class="msub-tabs" id="p-add-tabs"></div>
           <div class="form-row">
-            <div class="form-group"><label>レース名</label><input type="text" id="p-race" placeholder="日本ダービー"></div>
+            <div class="form-group"><label>レース名</label><input type="text" id="p-race" placeholder="東京優駿"></div>
             <div class="form-group"><label>結果</label>
               <select id="p-result">
                 <option value="pending">結果待ち</option>
@@ -124,8 +124,12 @@
             </div>
           </div>
           <div class="form-group" style="margin-bottom:.75rem;">
-            <label>予想内容・コメント</label>
-            <textarea id="p-detail" placeholder="◎ダイヤモンドライン ○スカイウォーカー&#10;理由：調教の動きが抜群。"></textarea>
+            <label>本命・買い目</label>
+            <input type="text" id="p-bet" placeholder="例：◎クロワデュノール 〇ミュージアムマイル / 馬単 13-7">
+          </div>
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label>予想内容・コメント（※行頭に「## 」をつけると自動で目次になります）</label>
+            <textarea id="p-detail" placeholder="## 展開の考察&#10;ここに展開やペースを分析...&#10;&#10;## 各馬の評価&#10;各馬の短評などを書く..."></textarea>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary" onclick="addPred()">追加する</button>
@@ -266,7 +270,7 @@
     allP.sort((a,b)=>b.id-a.id);
     const pEl=document.getElementById('top-preds');
     pEl.innerHTML=allP.length?allP.slice(0,4).map(p=>`
-      <div class="mini-item">
+      <div class="mini-item clickable-top-item" style="flex-direction:column;align-items:flex-start;gap:.1rem;" onclick="showPredDetail('${p.member}', ${p.id})">
         <span class="mini-label">${esc(p.race)}</span>
         <span class="mini-val">${esc(D.names[p.member])}</span>
       </div>`).join(''):'<div class="mini-item"><span class="mini-label">予想未登録</span></div>';
@@ -307,6 +311,17 @@
     setTimeout(() => {
       toggleColumn(columnId);
       const el = document.getElementById('col-' + columnId);
+      if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  }
+
+  window.showPredDetail = function(m, predId){
+    curMember = m;
+    innerTab[m] = 'pred';
+    showPage('members');
+    setTimeout(() => {
+      togglePred(predId);
+      const el = document.getElementById('pred-' + predId);
       if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 150);
   }
@@ -358,41 +373,51 @@
     }
   }
 
-  // 目次アンカーリンクへのスムーズスクロール関数
-  window.scrollToHeading = function(colId, headingIdx) {
-    const target = document.getElementById(`h-target-${colId}-${headingIdx}`);
+  window.togglePred = function(id) {
+    const el = document.getElementById('pred-' + id);
+    if (!el) return;
+    const isWrapOpen = el.classList.contains('open');
+    const bodyWrap = el.querySelector('.pred-body-wrap');
+    if (isWrapOpen) {
+      el.classList.remove('open');
+      bodyWrap.style.maxHeight = '0';
+    } else {
+      el.classList.add('open');
+      bodyWrap.style.maxHeight = bodyWrap.scrollHeight + 'px';
+    }
+  }
+
+  window.scrollToHeading = function(prefix, id, headingIdx) {
+    const target = document.getElementById(`h-target-${prefix}-${id}-${headingIdx}`);
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
-  // 🔴 変更：コラム本文と目次をパースしてHTML化するロジック
-  function parseColumnContent(colId, rawBody) {
+  function parseContentWithToc(prefix, id, rawBody) {
+    if (!rawBody) return '<div class="post-body-text">—</div>';
     const lines = rawBody.split('\n');
     const headings = [];
     let parsedContentHtml = '';
 
-    // 1行ずつ解析して、見出し(## )の抽出と本文の構築
     lines.forEach((line) => {
       if (line.startsWith('## ')) {
         const title = line.replace('## ', '').trim();
         const idx = headings.length;
         headings.push({ title, idx });
-        // 本文内にアンカー用のID付き見出しタグを埋め込む
-        parsedContentHtml += `<h4 class="col-heading" id="h-target-${colId}-${idx}">${esc(title)}</h4>`;
+        parsedContentHtml += `<h4 class="col-heading" id="h-target-${prefix}-${id}-${idx}">${esc(title)}</h4>`;
       } else {
         parsedContentHtml += `<div>${esc(line) || '&nbsp;'}</div>`;
       }
     });
 
-    // 目次HTMLの生成
     let tocHtml = '';
     if (headings.length > 0) {
       tocHtml = `
         <div class="column-toc">
           <div class="toc-title">📌 目次</div>
           <ul>
-            ${headings.map(h => `<li><a href="javascript:void(0);" onclick="scrollToHeading(${colId}, ${h.idx}); event.stopPropagation();">${esc(h.title)}</a></li>`).join('')}
+            ${headings.map(h => `<li><a href="javascript:void(0);" onclick="scrollToHeading('${prefix}', ${id}, ${h.idx}); event.stopPropagation();">${esc(h.title)}</a></li>`).join('')}
           </ul>
         </div>`;
     }
@@ -410,10 +435,20 @@
     if(tab==='pred'){
       if(!D.preds[m] || !D.preds[m].length)return'<div class="empty-state">予想が登録されていません</div>';
       return D.preds[m].slice().reverse().map(p=>`
-        <div class="pred-card">
-          <div class="pred-race-name">${esc(p.race)}</div>
-          <div class="pred-detail">${esc(p.detail)}</div>
-          <div class="pred-result pred-${p.result}">${resultLabel(p.result)}</div>
+        <div class="column-post pred-accordion-card" id="pred-${p.id}">
+          <div class="column-header-clickable" onclick="togglePred(${p.id})">
+            <div class="column-title-wrap">
+              <div class="pred-result pred-${p.result}" style="display:inline-block; margin-bottom:0.3rem; float:none; position:static;">${resultLabel(p.result)}</div>
+              <div class="post-title" style="margin-bottom:0; font-size:1.1rem; margin-top:0.1rem;">${esc(p.race)}</div>
+            </div>
+            <div class="column-arrow">▼</div>
+          </div>
+          <div class="pred-body-wrap" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease-out;">
+            <div class="column-body-inner" style="padding:1rem;">
+              ${p.bet ? `<div class="pred-bet-display" style="background:rgba(195,164,117,0.1); padding:0.75rem; border-radius:6px; margin-bottom:1rem; border-left:3px solid var(--accent); font-weight:bold; color:var(--text-main); font-size:0.95rem;">🎫 本命・買い目：${esc(p.bet)}</div>` : ''}
+              <div class="post-body">${parseContentWithToc('pred', p.id, p.detail)}</div>
+            </div>
+          </div>
         </div>`).join('');
     }
     if(tab==='column'){
@@ -429,7 +464,7 @@
           </div>
           <div class="column-body-wrap">
             <div class="column-body-inner">
-              <div class="post-body">${parseColumnContent(c.id, c.body)}</div>
+              <div class="post-body">${parseContentWithToc('col', c.id, c.body)}</div>
             </div>
           </div>
         </div>`).join('');
@@ -544,9 +579,15 @@
     const race=document.getElementById('p-race').value.trim();
     if(!race){alert('レース名を入力してください');return;}
     if(!D.preds[m]) D.preds[m] = [];
-    D.preds[m].push({id:Date.now(),race,detail:document.getElementById('p-detail').value.trim(),result:document.getElementById('p-result').value});
+    D.preds[m].push({
+      id:Date.now(),
+      race,
+      bet:document.getElementById('p-bet').value.trim(),
+      detail:document.getElementById('p-detail').value.trim(),
+      result:document.getElementById('p-result').value
+    });
     await saveToSupabase();
-    ['p-race','p-detail'].forEach(id=>document.getElementById(id).value='');
+    ['p-race','p-bet','p-detail'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('p-result').value='pending';
     aM.pList=m;mkSubTabs('p-list-tabs','pList');renderPredList();
     alert(D.names[m]+'の予想を追加し、共有しました');
@@ -568,7 +609,10 @@
     const m=aM.pList;const el=document.getElementById('pred-list');if(!el)return;
     el.innerHTML=D.preds[m] && D.preds[m].length?D.preds[m].slice().reverse().map(p=>`
       <div class="admin-list-item">
-        <div class="item-main"><div class="item-title">${esc(p.race)}</div><div class="item-sub">${p.detail?esc(p.detail).substring(0,40)+'…':'—'}</div></div>
+        <div class="item-main">
+          <div class="item-title">${esc(p.race)}</div>
+          <div class="item-sub">${p.bet ? '🎫 '+esc(p.bet) : p.detail?esc(p.detail).substring(0,40)+'…':'—'}</div>
+        </div>
         <select style="padding:.3rem .5rem;border:1.5px solid var(--cream-dark);border-radius:6px;font-size:.8rem;" onchange="updatePredResult('${m}',${p.id},this.value)">
           <option value="pending"${p.result==='pending'?' selected':''}>結果待ち</option>
           <option value="hit"${p.result==='hit'?' selected':''}>的中 ✓</option>
